@@ -14,8 +14,7 @@ import {
     actionRemoveFromDevice,
     actionReorderOnDevice,
     actionAddToLibrary,
-    actionDownloadFromLibrary,
-    actionLoadPackInEditor,
+    actionLoadLibraryPackInEditor,
     actionConvertInLibrary,
     actionRemoveFromLibrary,
     actionUploadToLibrary,
@@ -336,15 +335,8 @@ class PackLibrary extends React.Component {
 
     onEditLibraryPack = (pack) => {
         return () => {
-            // First, download pack file from library
-            this.props.downloadPackFromLibrary(pack.uuid, pack.path)
-                .then(packFile => {
-                    // A failed download has already been reported, and yields no file
-                    if (packFile) {
-                        // Next, load pack into editor
-                        this.props.loadPackInEditor(packFile, pack.path);
-                    }
-                });
+            // Read from the library entry by entry, rather than downloading the whole archive
+            this.props.loadLibraryPackInEditor(pack.path);
         }
     };
 
@@ -640,8 +632,7 @@ const mapDispatchToProps = (dispatch, ownProps) => ({
     removeFromDevice: (uuid) => dispatch(actionRemoveFromDevice(uuid, ownProps.t)),
     reorderOnDevice: (uuids) => dispatch(actionReorderOnDevice(uuids, ownProps.t)),
     addToLibrary: (uuid, driver, context) => dispatch(actionAddToLibrary(uuid, driver, context, ownProps.t)),
-    downloadPackFromLibrary: (uuid, path) => dispatch(actionDownloadFromLibrary(uuid, path, ownProps.t)),
-    loadPackInEditor: (packData, filename) => dispatch(actionLoadPackInEditor(packData, filename, ownProps.t)),
+    loadLibraryPackInEditor: (path) => dispatch(actionLoadLibraryPackInEditor(path, ownProps.t)),
     convertPackInLibrary: (uuid, path, format, allowEnriched, context) => dispatch(actionConvertInLibrary(uuid, path, format, allowEnriched, context, ownProps.t)),
     removeFromLibrary: (path) => dispatch(actionRemoveFromLibrary(path, ownProps.t)),
     uploadPackToLibrary: (path, packData) => dispatch(actionUploadToLibrary(null, path, packData, ownProps.t)),

@@ -21,24 +21,104 @@ export function readFromArchive(file) {
     return zip.loadAsync(file)
         .then((archive) => {
             // Read JSON story descriptor
-            return archive.file("story.json").async('string').then(storyJson => {
-                let json = JSON.parse(storyJson);
+            return archive.file("story.json").async('string').then(storyJson => buildPackModel(
+                JSON.parse(storyJson),
+                // Assets are held as base64 data URLs
+                () => {
+                    let thumb = archive.file('thumbnail.png');
+                    return thumb
+                        ? thumb.async('base64').then(base64Thumb => dataUrlPrefix('thumbnail.png') + base64Thumb)
+                        : Promise.resolve(null);
+                },
+                assetFileName => archive.file('assets/' + assetFileName).async('base64')
+                    .then(base64Asset => dataUrlPrefix(assetFileName) + base64Asset)
+            ));
+        }, e => {
+            console.log("Error reading " + file.name + ": " + e.message)
+        });
+}
+
+// The last pack opened from the library, and the object URLs of its assets
+let libraryAssets = {model: null, urls: []};
+
+/**
+ * Releases the assets of the last pack opened from the library, before another one is read: the browser
+ * caps the size of the Blobs a page holds, and a large pack fills a good part of it. Returns the model those
+ * assets belonged to, which can no longer display nor save them.
+ */
+export function releaseLibraryAssets() {
+    const {model, urls} = libraryAssets;
+    urls.forEach(url => URL.revokeObjectURL(url));
+    libraryAssets = {model: null, urls: []};
+    return model;
+}
+
+/**
+ * Reads a pack of the local library entry by entry, instead of downloading and unzipping the whole archive.
+ * `loadEntry(name)` resolves to the Blob of an archive entry, or null if the archive has none by that name.
+ *
+ * Audio and image assets become object URLs on these Blobs rather than base64 data URLs: the browser keeps
+ * their bytes outside the JavaScript heap, and the writer fetches them back when the pack is saved.
+ */
+export function readFromLibrary(loadEntry) {
+    let assetUrls = [];
+    let assetPromises = new Map();
+    return loadEntry('story.json')
+        .then(storyBlob => {
+            if (!storyBlob) {
+                throw new Error('Missing story.json');
+            }
+            return readBlob(storyBlob, 'text');
+        })
+        .then(storyJson => buildPackModel(
+            JSON.parse(storyJson),
+            // The thumbnail is small, and edited as a data URL
+            () => loadEntry('thumbnail.png').then(thumb => thumb && readBlob(thumb, 'dataUrl')),
+            assetFileName => {
+                // An asset shared by several nodes is loaded once
+                if (!assetPromises.has(assetFileName)) {
+                    assetPromises.set(assetFileName, loadEntry('assets/' + assetFileName).then(assetBlob => {
+                        if (!assetBlob) {
+                            throw new Error('Missing asset: ' + assetFileName);
+                        }
+                        let url = URL.createObjectURL(new Blob([assetBlob], {type: mimeType(assetFileName)}));
+                        assetUrls.push(url);
+                        return url;
+                    }));
+                }
+                return assetPromises.get(assetFileName);
+            }
+        ))
+        .then(loadedModel => {
+            libraryAssets = {model: loadedModel, urls: assetUrls};
+            return loadedModel;
+        }, e => {
+            assetUrls.forEach(url => URL.revokeObjectURL(url));
+            throw e;
+        });
+}
+
+function readBlob(blob, as) {
+    return new Promise((resolve, reject) => {
+        let reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        if (as === 'text') {
+            reader.readAsText(blob, 'UTF-8');
+        } else {
+            reader.readAsDataURL(blob);
+        }
+    });
+}
+
+function buildPackModel(json, loadThumbnail, loadAsset) {
 
                 var loadedModel = new PackDiagramModel(json.title, json.version, (json.description || ''), (json.nightModeAvailable || false));
 
                 let links = [];
 
                 // Async load thumbnail file
-                let thumbnailPromise = new Promise((resolve, reject) => {
-                    let thumb = archive.file('thumbnail.png');
-                    if (thumb) {
-                        thumb.async('base64').then(base64Thumb => {
-                            resolve(dataUrlPrefix('thumbnail.png') + base64Thumb);
-                        });
-                    } else {
-                        resolve(null);
-                    }
-                }).then(thumb => loadedModel.thumbnail = thumb);
+                let thumbnailPromise = loadThumbnail().then(thumb => loadedModel.thumbnail = thumb);
 
                 let assetsPromises = [
                     thumbnailPromise
@@ -88,9 +168,7 @@ export function readFromArchive(file) {
                             // Async load from asset files
                             let audioPromise = new Promise((resolve, reject) => {
                                 if (storyVirtualStage.audio) {
-                                    archive.file('assets/' + storyVirtualStage.audio).async('base64').then(base64Asset => {
-                                        resolve(dataUrlPrefix(storyVirtualStage.audio) + base64Asset);
-                                    });
+                                    loadAsset(storyVirtualStage.audio).then(resolve, reject);
                                 } else {
                                     resolve(null);
                                 }
@@ -110,9 +188,7 @@ export function readFromArchive(file) {
                             // Async load from asset files
                             let audioPromise = new Promise((resolve, reject) => {
                                 if (menuQuestionVirtualStage.audio) {
-                                    archive.file('assets/' + menuQuestionVirtualStage.audio).async('base64').then(base64Asset => {
-                                        resolve(dataUrlPrefix(menuQuestionVirtualStage.audio) + base64Asset);
-                                    });
+                                    loadAsset(menuQuestionVirtualStage.audio).then(resolve, reject);
                                 } else {
                                     resolve(null);
                                 }
@@ -126,18 +202,14 @@ export function readFromArchive(file) {
                                 // Async load from asset files
                                 let imagePromise = new Promise((resolve, reject) => {
                                     if (optionVirtualStage.image) {
-                                        archive.file('assets/' + optionVirtualStage.image).async('base64').then(base64Asset => {
-                                            resolve(dataUrlPrefix(optionVirtualStage.image) + base64Asset);
-                                        });
+                                        loadAsset(optionVirtualStage.image).then(resolve, reject);
                                     } else {
                                         resolve(null);
                                     }
                                 }).then(image => menuNode.setOptionImage(idx, image));
                                 let audioPromise = new Promise((resolve, reject) => {
                                     if (optionVirtualStage.audio) {
-                                        archive.file('assets/' + optionVirtualStage.audio).async('base64').then(base64Asset => {
-                                            resolve(dataUrlPrefix(optionVirtualStage.audio) + base64Asset);
-                                        });
+                                        loadAsset(optionVirtualStage.audio).then(resolve, reject);
                                     } else {
                                         resolve(null);
                                     }
@@ -159,18 +231,14 @@ export function readFromArchive(file) {
                             // Async load from asset files
                             let imagePromise = new Promise((resolve, reject) => {
                                 if (group[0].image) {
-                                    archive.file('assets/' + group[0].image).async('base64').then(base64Asset => {
-                                        resolve(dataUrlPrefix(group[0].image) + base64Asset);
-                                    });
+                                    loadAsset(group[0].image).then(resolve, reject);
                                 } else {
                                     resolve(null);
                                 }
                             }).then(image => coverNode.setImage(image));
                             let audioPromise = new Promise((resolve, reject) => {
                                 if (group[0].audio) {
-                                    archive.file('assets/' + group[0].audio).async('base64').then(base64Asset => {
-                                        resolve(dataUrlPrefix(group[0].audio) + base64Asset);
-                                    });
+                                    loadAsset(group[0].audio).then(resolve, reject);
                                 } else {
                                     resolve(null);
                                 }
@@ -202,18 +270,14 @@ export function readFromArchive(file) {
                         // Async load from asset files
                         let imagePromise = new Promise((resolve, reject) => {
                             if (node.image) {
-                                archive.file('assets/'+node.image).async('base64').then(base64Asset => {
-                                    resolve(dataUrlPrefix(node.image) + base64Asset);
-                                });
+                                loadAsset(node.image).then(resolve, reject);
                             } else {
                                 resolve(null);
                             }
                         }).then(image => stageNode.setImage(image));
                         let audioPromise = new Promise((resolve, reject) => {
                             if (node.audio) {
-                                archive.file('assets/'+node.audio).async('base64').then(base64Asset => {
-                                    resolve(dataUrlPrefix(node.audio) + base64Asset);
-                                });
+                                loadAsset(node.audio).then(resolve, reject);
                             } else {
                                 resolve(null);
                             }
@@ -341,12 +405,11 @@ export function readFromArchive(file) {
 
                         return loadedModel;
                     });
-            });
+}
 
-        }, e => {
-            console.log("Error reading " + file.name + ": " + e.message)
-        });
-
+function mimeType(assetFileName) {
+    let prefix = dataUrlPrefix(assetFileName);
+    return prefix.substring('data:'.length, prefix.indexOf(';base64,'));
 }
 
 function dataUrlPrefix(assetFileName) {

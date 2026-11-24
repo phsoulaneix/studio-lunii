@@ -6,7 +6,7 @@
 
 import JSZip from 'jszip';
 
-import {hashDataUrl} from "./hash";
+import {hashDataUrl, hashBytes} from "./hash";
 
 
 export async function writeToArchive(diagramModel) {
@@ -93,19 +93,19 @@ export async function writeToArchive(diagramModel) {
             // Store assets as separate files in archive
             let imageFile = null;
             if (node.getImage()) {
-                let hash = await hashDataUrl(node.getImage());
-                imageFile = hash + extensionFromDataUrl(node.getImage());
+                let asset = await readAsset(node.getImage());
+                imageFile = asset.hash + asset.extension;
                 if (written.indexOf(imageFile) === -1) {
-                    zipAssets.file(imageFile, node.getImage().substring(node.getImage().indexOf(',') + 1), {base64: true});
+                    zipAssets.file(imageFile, asset.data, {base64: asset.base64});
                     written.push(imageFile);
                 }
             }
             let audioFile = null;
             if (node.getAudio()) {
-                let hash = await hashDataUrl(node.getAudio());
-                audioFile = hash + extensionFromDataUrl(node.getAudio());
+                let asset = await readAsset(node.getAudio());
+                audioFile = asset.hash + asset.extension;
                 if (written.indexOf(audioFile) === -1) {
-                    zipAssets.file(audioFile, node.getAudio().substring(node.getAudio().indexOf(',')+1), {base64: true});
+                    zipAssets.file(audioFile, asset.data, {base64: asset.base64});
                     written.push(audioFile);
                 }
             }
@@ -155,10 +155,10 @@ export async function writeToArchive(diagramModel) {
                 // Store assets as separate files in archive
                 let questionAudioFile = null;
                 if (node.getQuestionAudio()) {
-                    let hash = await hashDataUrl(node.getQuestionAudio());
-                    questionAudioFile = hash + extensionFromDataUrl(node.getQuestionAudio());
+                    let asset = await readAsset(node.getQuestionAudio());
+                    questionAudioFile = asset.hash + asset.extension;
                     if (written.indexOf(questionAudioFile) === -1) {
-                        zipAssets.file(questionAudioFile, node.getQuestionAudio().substring(node.getQuestionAudio().indexOf(',')+1), {base64: true});
+                        zipAssets.file(questionAudioFile, asset.data, {base64: asset.base64});
                         written.push(questionAudioFile);
                     }
                 }
@@ -182,19 +182,19 @@ export async function writeToArchive(diagramModel) {
                     // Store assets as separate files in archive
                     let imageFile = null;
                     if (os.image) {
-                        let hash = await hashDataUrl(os.image);
-                        imageFile = hash + extensionFromDataUrl(os.image);
+                        let asset = await readAsset(os.image);
+                        imageFile = asset.hash + asset.extension;
                         if (written.indexOf(imageFile) === -1) {
-                            zipAssets.file(imageFile, os.image.substring(os.image.indexOf(',') + 1), {base64: true});
+                            zipAssets.file(imageFile, asset.data, {base64: asset.base64});
                             written.push(imageFile);
                         }
                     }
                     let audioFile = null;
                     if (os.audio) {
-                        let hash = await hashDataUrl(os.audio);
-                        audioFile = hash + extensionFromDataUrl(os.audio);
+                        let asset = await readAsset(os.audio);
+                        audioFile = asset.hash + asset.extension;
                         if (written.indexOf(audioFile) === -1) {
-                            zipAssets.file(audioFile, os.audio.substring(os.audio.indexOf(',')+1), {base64: true});
+                            zipAssets.file(audioFile, asset.data, {base64: asset.base64});
                             written.push(audioFile);
                         }
                     }
@@ -273,8 +273,37 @@ export async function writeToArchive(diagramModel) {
     return zip.generateAsync({type: "blob"});
 }
 
+/**
+ * Content of an asset to store in the archive. An asset is a data URL, or an object URL on a Blob for a
+ * pack opened from the local library (see readFromLibrary): its bytes are fetched back, never base64-encoded.
+ */
+async function readAsset(url) {
+    if (url.startsWith('data:')) {
+        return {
+            hash: await hashDataUrl(url),
+            extension: extensionFromDataUrl(url),
+            data: url.substring(url.indexOf(',') + 1),
+            base64: true
+        };
+    }
+    let resp = await fetch(url);
+    if (!resp.ok) {
+        throw new Error('Asset unavailable: ' + url);
+    }
+    let bytes = await resp.arrayBuffer();
+    return {
+        hash: await hashBytes(bytes),
+        extension: extensionFromMimeType(resp.headers.get('Content-Type') || ''),
+        data: bytes,
+        base64: false
+    };
+}
+
 function extensionFromDataUrl(dataUrl) {
-    let mimeType = dataUrl.substring(dataUrl.indexOf(':') + 1, dataUrl.indexOf(';base64,'));
+    return extensionFromMimeType(dataUrl.substring(dataUrl.indexOf(':') + 1, dataUrl.indexOf(';base64,')));
+}
+
+function extensionFromMimeType(mimeType) {
     switch (mimeType) {
         case 'image/bmp':
             return '.bmp';

@@ -90,7 +90,14 @@
   },
 
   "editor": {
+    "titleVoice": {
+      "choose": "Voix utilisée pour générer les titres",
+      "auto": "Voix en ligne (Denise), sinon voix de l'ordinateur",
+      "system": "Voix de l'ordinateur (hors ligne)",
+      "unavailable": "— indisponible"
+    },
     "actions": {
+      "generateTitleVoices": "Générer la voix de tous les titres sans audio (couverture, menus, options, scènes)",
       "save": "Enregistrer le pack dans la bibliothèque",
       "import": "Importer un pack",
       "export": "Exporter le pack",
@@ -124,6 +131,12 @@
       "verify": "Verifier le diagramme"
     },
     "diagram": {
+      "titleGenerator": {
+        "audio": "Générer la voix à partir du titre",
+        "image": "Générer une image avec le titre",
+        "askAudio": "Texte à prononcer :",
+        "askImage": "Texte à écrire sur l'image :"
+      },
       "editText": "Cliquez pour modifier",
       "stage": {
         "controls": {
@@ -260,6 +273,12 @@
       "notCompatible": "Le pack d'histoires n'est pas compatible avec cet appareil."
     },
     "editor": {
+      "titleVoiceFailed": "La voix n'a pas pu être générée : {{message}}",
+      "titleVoiceFallback": "Voix en ligne indisponible, voix de l'ordinateur utilisée ({{reason}})",
+      "titleVoiceNothingMissing": "Tous les titres ont déjà un audio",
+      "titleVoiceGenerating": "Génération des voix… {{done}} / {{total}}",
+      "titleVoiceGenerated": "{{count}} voix générée(s)",
+      "titleVoiceStopped": "Génération arrêtée après {{done}} / {{total}} : {{message}}",
       "saving": "Enregistrement du pack d'histoires dans la bibliothèque...",
       "saved": "Pack d'histoires enregistré dans la bibliothèque.",
       "savingFailed": "Échec de l'enregistrement du pack d'histoires dans la bibliothèque.",
@@ -270,8 +289,10 @@
       "loading": "Chargement du pack d'histoires...",
       "loaded": "Pack d'histoires chargé.",
       "loadingFailed": "Échec du chargement du pack d'histoires.",
-      "thumbWrongType": "La miniature doit être au format PNG.",
-      "imageAssetWrongType": "Les formats d'image supportés sont : BMP, JPEG, PNG.",
+      "thumbWrongType": "Ce fichier n'est pas une image lisible par le navigateur.",
+      "thumbConverted": "Miniature convertie au format PNG.",
+      "imageAssetWrongType": "Ce fichier n'est pas une image lisible par le navigateur.",
+      "imageAssetConverted": "Image convertie au format de l'appareil (320x240, depuis {{width}}x{{height}}).",
       "imageAssetWrongDimensions": "Les dimensions de l'image doivent être 320x240 pixels.",
       "audioAssetWrongType": "Les formats audio supportés sont : WAV, MP3, OGG.",
       "tooManyEntryPoints": "Un pack d'histoires ne peut avoir qu'un seul point d'entrée.",
@@ -347,7 +368,7 @@
         },
         "diagram": {
           "title": "Diagramme et Ressources",
-          "content": "<p><strong>Le diagramme représente un pack d'histoires</strong>, commençant par le point d'entrée et définissant comment l'utilisateur navigue entre les nœuds. Quelques points notables : <ul><li>Le point d'entrée du pack d'hitoires / diagramme peut être soit un Nœud Départ, soit un Nœud de Scène</li><li>Lors de l'utilisation des Nœuds Experts, vous pouvez enchaîner Nœuds de Scène et Nœuds d'Action comme vous le souhaitez, mais gardez en tête la \"règle d'or\": un Nœud de Scène ne peut pointer que vers un Nœud d'Action, et un Nœud d'Action contient une liste de Nœuds de Scène uniquement.</li><li>Vous pouvez mélanger Nœuds Experts et Nœuds Simplifiés si vous le souhaitez. L'éditeur empêchera la création de liens ne suivant pas la \"règle d'or\".</li></ul></p><p><strong>Les ressources image</strong> doivent respecter les critères suivants : <ul><li>Les format supportés sont BMP (24-bits), PNG** (sans canal alpha) and JPEG** (les formats marqués d'astérisques sont automatiquement convertis lors du transfert vers l'appareil)</li><li><strong>Les dimensions de l'image doivent être  320x240</strong></li><li>Les images peuvent être en couleurs, bien que certaines couleurs ne seront certainement pas affichées fidèlement par l'écran situé derrière le boîtier en plastique. Gardez à l'esprit que la couleur du boîtier peut changer, comme c'est le cas pour la récente édition de Noël.</li></ul></p><p><strong>Les ressources audio</strong>  doivent respecter les critères suivants : <ul><li>Les formats supportés sont WAVE (16-bits signés, mono, 32000 Hz), MP3** (44100 Hz) and OGG/Vorbis** (44100 Hz) (les formats marqués d'astérisques sont automatiquement convertis lors du transfert vers l'appareil)</li><li>Pour une meilleure lecture, les fichiers audio doivent inclure un court \"blanc\" (environ 400 ms pour les sons courts, quelques secondes pour une longue histoire) en début et fin de fichier.</li><li>Le volume doit être assez élevé. Visez un niveau de pics autour de -3dB ou supérieur, et une moyenne RMS autour de -20dB.</li></ul></p>"
+          "content": "<p><strong>Le diagramme représente un pack d'histoires</strong>, commençant par le point d'entrée et définissant comment l'utilisateur navigue entre les nœuds. Quelques points notables : <ul><li>Le point d'entrée du pack d'hitoires / diagramme peut être soit un Nœud Départ, soit un Nœud de Scène</li><li>Lors de l'utilisation des Nœuds Experts, vous pouvez enchaîner Nœuds de Scène et Nœuds d'Action comme vous le souhaitez, mais gardez en tête la \"règle d'or\": un Nœud de Scène ne peut pointer que vers un Nœud d'Action, et un Nœud d'Action contient une liste de Nœuds de Scène uniquement.</li><li>Vous pouvez mélanger Nœuds Experts et Nœuds Simplifiés si vous le souhaitez. L'éditeur empêchera la création de liens ne suivant pas la \"règle d'or\".</li></ul></p><p><strong>Les ressources image</strong> doivent respecter les critères suivants : <ul><li>Les format supportés sont BMP (24-bits), PNG** (sans canal alpha) and JPEG** (les formats marqués d'astérisques sont automatiquement convertis lors du transfert vers l'appareil)</li><li><strong>Les dimensions de l'image doivent être  320x240</strong> (toute autre image lisible par le navigateur, par exemple JPEG, PNG, WebP ou GIF de n'importe quelle taille, est convertie automatiquement à l'ajout, en gardant ses proportions avec des bandes noires)</li><li>Les images peuvent être en couleurs, bien que certaines couleurs ne seront certainement pas affichées fidèlement par l'écran situé derrière le boîtier en plastique. Gardez à l'esprit que la couleur du boîtier peut changer, comme c'est le cas pour la récente édition de Noël.</li></ul></p><p><strong>Les ressources audio</strong>  doivent respecter les critères suivants : <ul><li>Les formats supportés sont WAVE (16-bits signés, mono, 32000 Hz), MP3** (44100 Hz) and OGG/Vorbis** (44100 Hz) (les formats marqués d'astérisques sont automatiquement convertis lors du transfert vers l'appareil)</li><li>Pour une meilleure lecture, les fichiers audio doivent inclure un court \"blanc\" (environ 400 ms pour les sons courts, quelques secondes pour une longue histoire) en début et fin de fichier.</li><li>Le volume doit être assez élevé. Visez un niveau de pics autour de -3dB ou supérieur, et une moyenne RMS autour de -20dB.</li></ul></p>"
         }
       }
     },

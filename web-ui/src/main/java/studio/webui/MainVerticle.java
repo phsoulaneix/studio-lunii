@@ -26,6 +26,7 @@ import studio.metadata.DatabaseMetadataService;
 import studio.webui.api.DeviceController;
 import studio.webui.api.EvergreenController;
 import studio.webui.api.LibraryController;
+import studio.webui.api.TitleVoiceController;
 import studio.webui.service.*;
 import studio.webui.service.mock.MockStoryTellerService;
 
@@ -250,6 +251,9 @@ public class MainVerticle extends AbstractVerticle {
 
         // Evergreen services
         router.mountSubRouter("/evergreen", EvergreenController.apiRouter(vertx, evergreenService));
+
+        // Spoken titles for the editor
+        router.mountSubRouter("/tts", TitleVoiceController.apiRouter(vertx, new TitleVoiceService()));
 
         return router;
     }

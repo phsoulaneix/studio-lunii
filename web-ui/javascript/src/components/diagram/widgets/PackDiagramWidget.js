@@ -23,6 +23,7 @@ import TrayItemWidget from "./TrayItemWidget";
 import Modal from "../../Modal";
 import {setEditorDiagram, setEditorFilename, setDiagramErrors} from "../../../actions";
 import {generateFilename} from "../../../utils/packs";
+import {prepareThumbnail} from "../../../utils/images";
 
 
 class PackDiagramWidget extends React.Component {
@@ -116,18 +117,20 @@ class PackDiagramWidget extends React.Component {
         if (!file) {
             return;
         }
-        if (file.type !== 'image/png') {
-            toast.error(t('toasts.editor.thumbWrongType'));
-            return;
-        }
-        let reader = new FileReader();
+        // Allow selecting the same file again after a conversion or an error
+        event.target.value = '';
         let that = this;
-        reader.addEventListener("load", () => {
-            console.log(reader.result);
-            that.props.diagramEngine.getModel().thumbnail = reader.result;
-            that.forceUpdate();
-        }, false);
-        reader.readAsDataURL(file);
+        prepareThumbnail(file)
+            .then(result => {
+                if (result.converted) {
+                    toast.info(t('toasts.editor.thumbConverted'));
+                }
+                that.props.diagramEngine.getModel().thumbnail = result.dataUrl;
+                that.forceUpdate();
+            }, e => {
+                console.error('Failed to read thumbnail file', e);
+                toast.error(t('toasts.editor.thumbWrongType'));
+            });
     };
 
     showFilenameSuggestionDialog = () => {

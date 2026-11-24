@@ -133,3 +133,43 @@ content differs, a conversion whose provenance is unknown or cannot be checked (
 before records existed, unreadable), a conversion when the modification time and its name disagree
 on which is older, anything that would leave a pack with no entry, and entries that are not
 readable packs.
+
+## Spoken titles (editor)
+
+`/api/tts` speaks a node title for the editor's *Générer la voix* button. Same request rules as
+above (`Host`/`Origin` checked, `POST` in JSON only, body ≤ 1 MiB).
+
+`POST /api/tts/speak` `{"text": "Le petit chaperon rouge", "engine": "auto", "voice": "fr-FR-DeniseNeural"}`:
+
+```json
+{"success": true, "engine": "edge", "voice": "fr-FR-DeniseNeural", "mimeType": "audio/wav",
+ "durationMillis": 2850, "data": "<base64>"}
+```
+
+- `text`: required, at most 500 characters once control characters and repeated spaces are
+  removed.
+- `engine`: `auto` (default), `edge` or `system`.
+  - `edge`: the `edge-tts` Python package, as Lunii Pack uses it. **The text is sent to Microsoft's
+    online speech service.** Python is looked for in `-Dstudio.tts.python=<python.exe>`, then the
+    `STUDIO_TTS_PYTHON` variable, then `python` / `python3` on the `PATH`; it must be able to
+    `import edge_tts`.
+  - `system`: the Windows voice (SAPI, `System.Speech`), offline; a French voice when one is
+    installed. Nothing leaves the computer.
+  - `auto`: `edge` when available, the system voice if `edge` is missing or fails (the answer then
+    carries `fallbackReason`).
+- `voice`: an edge voice name (`xx-XX-NameNeural`); ignored by the system voice.
+- Defaults can be set at start-up: `-Dstudio.tts.engine=system` (never go online),
+  `-Dstudio.tts.voice=fr-FR-HenriNeural`, `-Dstudio.tts.timeoutSeconds=60`.
+
+The audio is always a device-native WAVE (PCM 16 bits, mono, 32 kHz) with 400 ms of silence at
+each end. Processes are started from an argument list, never through a shell; the text is passed
+in a UTF-8 file, never on a command line; each run is killed after the time limit.
+
+| Status | `error` | Meaning |
+| --- | --- | --- |
+| 400 | `INVALID_REQUEST` | missing, empty or too long text, unknown engine, malformed voice |
+| 503 | `TTS_UNAVAILABLE` | the requested engine (or every engine) is not installed |
+| 502 | `TTS_FAILED` | the engine failed, timed out or produced no sound |
+
+`GET /api/tts/engines` → `{"edge": true, "system": true, "defaultEngine": "auto",
+"defaultVoice": "fr-FR-DeniseNeural", "voices": […], "maxLength": 500}`.

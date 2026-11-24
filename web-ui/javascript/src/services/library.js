@@ -24,6 +24,25 @@ export const downloadFromLibrary = async (uuid, path) => {
     });
 };
 
+// One entry of a library archive (story.json, thumbnail.png, assets/...), as a Blob, or null if the archive has none
+export const fetchLibraryPackEntry = async (path, entry) => {
+    const resp = await fetch('/api/library/entry', {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({path, entry})
+    });
+    if (resp.status === 404) {
+        return null;
+    }
+    if (!resp.ok) {
+        const text = await resp.text().catch(() => '');
+        const error = new Error(resp.statusText + ': ' + errorMessage(text));
+        error.status = resp.status;
+        throw error;
+    }
+    return resp.blob();
+};
+
 export const uploadToLibrary = async (uuid, path, packData, progressHandler) => {
     return new Promise((resolve, reject) => {
         let xhr = new XMLHttpRequest();

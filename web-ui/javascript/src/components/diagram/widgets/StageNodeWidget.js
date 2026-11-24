@@ -13,7 +13,9 @@ import { DiagramEngine } from '@projectstorm/react-diagrams';
 
 import StageNodeModel from "../models/StageNodeModel";
 import EditableText from "./composites/EditableText";
+import TitleGenerator from "./composites/TitleGenerator";
 import StudioPortWidget from "./StudioPortWidget";
+import {prepareAssetImage} from "../../../utils/images";
 import {showViewer, setViewerDiagram, setViewerStage, setViewerAction} from "../../../actions";
 
 
@@ -92,29 +94,20 @@ class StageNodeWidget extends React.Component {
         if (!file) {
             return;
         }
-        if (['image/bmp', 'image/jpeg', 'image/png'].indexOf(file.type) === -1) {
-            toast.error(t('toasts.editor.imageAssetWrongType'));
-            return;
-        }
-
-        let reader = new FileReader();
         let that = this;
-        reader.addEventListener("load", function () {
-            let image = new Image();
-            image.onload = function() {
-                // Check image dimensions
-                if(image.width !== 320 || image.height !== 240) {
-                    toast.error(t('toasts.editor.imageAssetWrongDimensions'));
-                    return;
+        prepareAssetImage(file)
+            .then(result => {
+                if (result.converted) {
+                    toast.info(t('toasts.editor.imageAssetConverted', {width: result.original.width, height: result.original.height}));
                 }
                 // Update node image
-                that.props.node.setImage(reader.result);
+                that.props.node.setImage(result.dataUrl);
                 that.props.updateCanvas();
                 that.forceUpdate();
-            };
-            image.src = reader.result;
-        }, false);
-        reader.readAsDataURL(file);
+            }, e => {
+                console.error('Failed to read image file', e);
+                toast.error(t('toasts.editor.imageAssetWrongType'));
+            });
     };
 
     resetImage = (event) => {
@@ -254,6 +247,7 @@ class StageNodeWidget extends React.Component {
                                             <img src={this.props.node.getImage()} alt="" className="dropzone"/>
                                         </>}
                                     </div>
+                                    <TitleGenerator kind="image" text={this.props.node.getName()} onGenerated={dataUrl => { this.props.node.setImage(dataUrl); this.props.updateCanvas(); this.forceUpdate(); }}/>
                                 </div>
                                 <div className="asset right">
                                     <input type="file" id={`audio-upload-${this.props.node.getUuid()}`} onChange={this.audioFileSelected} />
@@ -268,6 +262,7 @@ class StageNodeWidget extends React.Component {
                                             <span className="dropzone glyphicon glyphicon-play"/>
                                         </>}
                                     </div>
+                                    <TitleGenerator kind="audio" text={this.props.node.getName()} onGenerated={dataUrl => { this.props.node.setAudio(dataUrl); this.props.updateCanvas(); this.forceUpdate(); }}/>
                                 </div>
                             </div>
                             <div className="options">

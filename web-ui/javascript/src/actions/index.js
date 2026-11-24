@@ -12,10 +12,10 @@ import IssueReportToast from "../components/IssueReportToast";
 import PackDiagramModel from "../components/diagram/models/PackDiagramModel";
 import {fetchDeviceInfos, fetchDevicePacks, addFromLibrary, removeFromDevice, reorderPacks, addToLibrary, fetchTransfer} from '../services/device';
 import {SUBSCRIBED, CHANNEL_OPEN} from '../services/eventBusChannel';
-import {fetchLibraryInfos, fetchLibraryPacks, downloadFromLibrary, uploadToLibrary, convertInLibrary, removeFromLibrary} from '../services/library';
+import {fetchLibraryInfos, fetchLibraryPacks, downloadFromLibrary, fetchLibraryPackEntry, uploadToLibrary, convertInLibrary, removeFromLibrary} from '../services/library';
 import {fetchEvergreenInfos, fetchEvergreenLatestRelease, fetchEvergreenAnnounce} from '../services/evergreen';
 import {generateFilename, sortPacks} from "../utils/packs";
-import {readFromArchive} from "../utils/reader";
+import {readFromArchive, readFromLibrary, releaseLibraryAssets} from "../utils/reader";
 import {errorMessage} from "../utils/fetch";
 import {simplifiedSample} from "../utils/sample";
 
@@ -583,6 +583,31 @@ export const actionLoadPackInEditor = (packData, filename, t) => {
             })
             .catch(e => {
                 console.error('failed to load story pack', e);
+                toast.update(toastId, { type: toast.TYPE.ERROR, render: <IssueReportToast content={<>{t('toasts.editor.loadingFailed')}</>} error={e} />, autoClose: false });
+            });
+    }
+};
+
+// A library pack is read entry by entry on the server: no download of the whole archive, no unzipping in the browser
+export const actionLoadLibraryPackInEditor = (path, t) => {
+    return (dispatch, getState) => {
+        let toastId = toast(t('toasts.editor.loading'), { autoClose: false });
+        // The pack about to be replaced lets go of its assets first, to leave room for the new one
+        let releasedModel = releaseLibraryAssets();
+        return readFromLibrary(entry => fetchLibraryPackEntry(path, entry))
+            .then(loadedModel => {
+                toast.update(toastId, { type: toast.TYPE.SUCCESS, render: t('toasts.editor.loaded'), autoClose: 5000});
+                // Set loaded model in editor
+                dispatch(setEditorDiagram(loadedModel, path));
+                // Show editor
+                dispatch(showEditor());
+            })
+            .catch(e => {
+                console.error('failed to load story pack from library', e);
+                if (releasedModel && getState().editor.diagram === releasedModel) {
+                    // Its assets are gone: an empty editor rather than a pack that can neither play nor save them
+                    dispatch(setEditorDiagram(new PackDiagramModel()));
+                }
                 toast.update(toastId, { type: toast.TYPE.ERROR, render: <IssueReportToast content={<>{t('toasts.editor.loadingFailed')}</>} error={e} />, autoClose: false });
             });
     }

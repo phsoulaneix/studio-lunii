@@ -12,6 +12,8 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.apache.commons.io.FileUtils;
 import studio.core.v1.model.StoryPack;
 import studio.core.v1.model.metadata.StoryPackMetadata;
@@ -31,6 +33,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.io.InputStream;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -63,6 +66,8 @@ public class LibraryService {
     public static final String LOCAL_LIBRARY_PATH = "/.studio/library/";
     public static final String TMP_DIR_PROP = "studio.tmpdir";
     public static final String TMP_DIR_PATH = "/.studio/tmp/";
+    /** Largest archive entry served to the editor: far above any image or audio asset of a pack. */
+    static final int MAX_PACK_ENTRY_SIZE = 512 * 1024 * 1024;
 
     private final Logger LOGGER = LoggerFactory.getLogger(LibraryService.class);
 
@@ -225,6 +230,41 @@ public class LibraryService {
     public Optional<File> getRawPackFile(String packPath) {
         // Only ever a direct library entry: whatever this returns is sent straight to the client.
         return libraryEntry(packPath).map(Path::toFile);
+    }
+
+    /**
+     * One entry of an archive pack of the library, read through the archive's central directory
+     * without going over the rest of it: what the editor needs to open a pack, entry by entry.
+     *
+     * @return the entry's bytes, or empty if the name is not an archive pack of the library, or if
+     * the archive holds no file by that entry name
+     */
+    public Optional<byte[]> readArchivePackEntry(String packPath, String entryName) throws IOException {
+        if (packPath == null || !packPath.toLowerCase(Locale.ROOT).endsWith(".zip")
+                || entryName == null || entryName.isEmpty()) {
+            return Optional.empty();
+        }
+        Optional<Path> pack = libraryEntry(packPath).filter(Files::isRegularFile);
+        if (pack.isEmpty()) {
+            return Optional.empty();
+        }
+        try (ZipFile zip = ZipFile.builder().setPath(pack.get()).get()) {
+            ZipArchiveEntry entry = zip.getEntry(entryName);
+            if (entry == null || entry.isDirectory()) {
+                return Optional.empty();
+            }
+            try (InputStream in = zip.getInputStream(entry)) {
+                if (in == null) {
+                    throw new IOException("Unsupported archive entry: " + entryName);
+                }
+                // Bounded, whatever the entry declares: a deflated entry can expand far beyond it
+                byte[] bytes = in.readNBytes(MAX_PACK_ENTRY_SIZE + 1);
+                if (bytes.length > MAX_PACK_ENTRY_SIZE) {
+                    throw new IOException("Archive entry too large: " + entryName);
+                }
+                return Optional.of(bytes);
+            }
+        }
     }
 
     public Optional<Path> addConvertedRawPackFile(String packPath, Boolean allowEnriched) {

@@ -90,7 +90,14 @@
   },
 
   "editor": {
+    "titleVoice": {
+      "choose": "Voice used to generate titles",
+      "auto": "Online voice (Denise), else the computer voice",
+      "system": "Computer voice (offline)",
+      "unavailable": "— unavailable"
+    },
     "actions": {
+      "generateTitleVoices": "Generate the voice of every title without audio (cover, menus, options, stages)",
       "save": "Save pack to library",
       "import": "Import pack",
       "export": "Export pack",
@@ -124,6 +131,12 @@
       "verify": "Verify diagram"
     },
     "diagram": {
+      "titleGenerator": {
+        "audio": "Generate the voice from the title",
+        "image": "Generate an image showing the title",
+        "askAudio": "Text to speak:",
+        "askImage": "Text to write on the image:"
+      },
       "editText": "Click to edit",
       "stage": {
         "controls": {
@@ -260,6 +273,12 @@
       "notCompatible": "The story pack is not compatible with the plugged device."
     },
     "editor": {
+      "titleVoiceFailed": "The voice could not be generated: {{message}}",
+      "titleVoiceFallback": "Online voice unavailable, the computer voice was used ({{reason}})",
+      "titleVoiceNothingMissing": "Every title already has audio",
+      "titleVoiceGenerating": "Generating voices… {{done}} / {{total}}",
+      "titleVoiceGenerated": "{{count}} voice(s) generated",
+      "titleVoiceStopped": "Generation stopped after {{done}} / {{total}}: {{message}}",
       "saving": "Saving story pack to library...",
       "saved": "Saved story pack to library.",
       "savingFailed": "Failed to save story pack to library.",
@@ -270,8 +289,10 @@
       "loading": "Loading story pack...",
       "loaded": "Loaded story pack.",
       "loadingFailed": "Failed to load story pack.",
-      "thumbWrongType": "Thumbnail must be in PNG format.",
-      "imageAssetWrongType": "Supported image asset formats are: BMP, JPEG, PNG.",
+      "thumbWrongType": "This file is not an image the browser can read.",
+      "thumbConverted": "Thumbnail converted to PNG.",
+      "imageAssetWrongType": "This file is not an image the browser can read.",
+      "imageAssetConverted": "Image converted to the device format (320x240, from {{width}}x{{height}}).",
       "imageAssetWrongDimensions": "Image must be 320x240 pixels.",
       "audioAssetWrongType": "Supported audio asset formats are: WAV, MP3, OGG.",
       "tooManyEntryPoints": "A story pack can only have one entry point.",
@@ -347,7 +368,7 @@
         },
         "diagram": {
           "title": "Diagram and Assets",
-          "content": "<p><strong>The diagram represents a story pack</strong>, starting from an entry point and defining how the user can navigate between nodes. Here are a few notable things: <ul><li>The entry point of the story pack / diagram may be either a Cover Node or a Stage Node</li><li>When using Expert Nodes, you can chain Stage Nodes and Action Nodes however you like, but keep in mind the \"golden rule\": a Stage Node can only transition to an Action Node, and an Action Node contains a list of Stage Nodes only.</li><li>You can mix and match expert nodes with simplified nodes if you see fit. The editor got your back and won't let you make invalid links that do not follow the \"golden rule\".</li></ul></p><p><strong>Image assets</strong> must follow a few requirements: <ul><li>Supported formats are BMP (24-bits), PNG** (without alpha layer) and JPEG** (formats marked with asterisks are automatically converted when transferring to the device)</li><li><strong>Image dimensions must be 320x240</strong></li><li>Images may use colors, even though some colors may not render accurately due to the screen being behind the plastic cover. Bear in mind that the color of the cover may change, as seen with the recently released Christmas edition.</li></ul></p><p><strong>Audio assets</strong> must follow a few requirements: <ul><li>Supported formats are WAVE (signed 16-bits, mono, 32000 Hz), MP3** (44100 Hz) and OGG/Vorbis** (44100 Hz) (formats marked with asterisks are automatically converted when transferring to the device)</li><li>For better playback, audio files should include short blanks (around 400 ms for short sounds, a few seconds for long stories) at the beginning and end of file.</li><li>Audio levels should be pretty high. Aim for peak level around -3dB or higher, and mean RMS around -20dB.</li></ul></p>"
+          "content": "<p><strong>The diagram represents a story pack</strong>, starting from an entry point and defining how the user can navigate between nodes. Here are a few notable things: <ul><li>The entry point of the story pack / diagram may be either a Cover Node or a Stage Node</li><li>When using Expert Nodes, you can chain Stage Nodes and Action Nodes however you like, but keep in mind the \"golden rule\": a Stage Node can only transition to an Action Node, and an Action Node contains a list of Stage Nodes only.</li><li>You can mix and match expert nodes with simplified nodes if you see fit. The editor got your back and won't let you make invalid links that do not follow the \"golden rule\".</li></ul></p><p><strong>Image assets</strong> must follow a few requirements: <ul><li>Supported formats are BMP (24-bits), PNG** (without alpha layer) and JPEG** (formats marked with asterisks are automatically converted when transferring to the device)</li><li><strong>Image dimensions must be 320x240</strong> (any other image the browser can read, e.g. JPEG, PNG, WebP or GIF of any size, is converted automatically when added, keeping its proportions with black bands)</li><li>Images may use colors, even though some colors may not render accurately due to the screen being behind the plastic cover. Bear in mind that the color of the cover may change, as seen with the recently released Christmas edition.</li></ul></p><p><strong>Audio assets</strong> must follow a few requirements: <ul><li>Supported formats are WAVE (signed 16-bits, mono, 32000 Hz), MP3** (44100 Hz) and OGG/Vorbis** (44100 Hz) (formats marked with asterisks are automatically converted when transferring to the device)</li><li>For better playback, audio files should include short blanks (around 400 ms for short sounds, a few seconds for long stories) at the beginning and end of file.</li><li>Audio levels should be pretty high. Aim for peak level around -3dB or higher, and mean RMS around -20dB.</li></ul></p>"
         }
       }
     },

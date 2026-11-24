@@ -7,6 +7,7 @@
 package studio.webui.api;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -20,6 +21,7 @@ import studio.webui.service.LibraryService;
 import studio.webui.service.ProvenanceVerdict;
 import studio.webui.service.PurgeCandidate;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,6 +64,31 @@ public class LibraryController {
                             }
                     );
         });
+
+        // One entry of an archive pack of the library (story.json, thumbnail.png, assets/...). The
+        // editor opens a library pack entry by entry, rather than downloading the whole archive and
+        // unzipping it in the browser. Unordered: the browser asks for several entries at once, and
+        // an ordered blocking handler would serve them one after the other.
+        router.post("/entry").blockingHandler(ctx -> {
+            String packPath = ctx.getBodyAsJson().getString("path");
+            String entryName = ctx.getBodyAsJson().getString("entry");
+            Optional<byte[]> entry;
+            try {
+                entry = libraryService.readArchivePackEntry(packPath, entryName);
+            } catch (IOException e) {
+                LOGGER.error("Failed to read entry " + entryName + " of library pack " + packPath, e);
+                ApiErrors.respond(ctx, new StoryTellerException("Failed to read pack entry", e));
+                return;
+            }
+            entry.ifPresentOrElse(
+                    bytes -> ctx.response()
+                            .putHeader("content-type", "application/octet-stream")
+                            // The same entry name may hold other content once the pack is saved again
+                            .putHeader("Cache-Control", "no-store")
+                            .end(Buffer.buffer(bytes)),
+                    () -> ctx.response().setStatusCode(404).end()
+            );
+        }, false);
 
         // Local library pack upload
         router.post("/upload").blockingHandler(ctx -> {

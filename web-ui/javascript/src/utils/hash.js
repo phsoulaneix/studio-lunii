@@ -15,6 +15,12 @@ export function hashDataUrl(dataUrl) {
         .then(hash => hexString(hash));
 }
 
+export function hashBytes(bytes) {
+    // Compute sha1 hash of an ArrayBuffer and convert to hex string
+    return window.crypto.subtle.digest('SHA-1', bytes)
+        .then(hash => hexString(hash));
+}
+
 function hexString(buffer) {
     const byteArray = new Uint8Array(buffer);
 
