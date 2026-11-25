@@ -53,10 +53,42 @@
 
   "editor": {
     "titleVoice": {
-      "choose": "Voice used to generate titles",
-      "auto": "Online voice (Denise), else the computer voice",
-      "system": "Computer voice (offline)",
-      "unavailable": "— unavailable"
+      "choose": "Title voice",
+      "voices": {
+        "denise": "Denise (female)",
+        "henri": "Henri (male)",
+        "eloise": "Éloïse (child voice)",
+        "vivienne": "Vivienne (female)",
+        "remy": "Rémy (male)"
+      },
+      "online": "Online voices",
+      "offline": "Offline",
+      "auto": "Default voice",
+      "system": "Computer voice",
+      "systemShort": "Computer",
+      "unavailable": "(unavailable)",
+      "onlineHelp": "Natural voice, as in Lunii Pack: the text is sent to Microsoft's online service. Without a connection, the computer voice takes over.",
+      "offlineHelp": "Windows voice: nothing leaves the computer, but it sounds less natural.",
+      "onlineMissing": "The online voice is not installed (Python and edge-tts): the computer voice will be used.",
+      "pronunciation": "Pronunciation (written = spoken)",
+      "pronunciationPlaceholder": "e.g. Dalton = Daltonne ; Luke = Louc",
+      "listenPrompt": "Sentence to listen to",
+      "settingsTitle": "Title voice",
+      "available": "available",
+      "notInstalled": "not installed",
+      "generatedOnline": "Online voice: {{voice}}",
+      "generatedOffline": "Computer voice"
+    },
+    "titleGenerator": {
+      "audio": "Generate the voice from the title",
+      "image": "Generate an image showing the title",
+      "audioTitle": "Generate the title voice",
+      "imageTitle": "Generate the title image",
+      "askAudio": "Text to speak",
+      "askImage": "Text to write on the image",
+      "listen": "Listen",
+      "attach": "Attach to the node",
+      "emptyText": "Type a text"
     },
     "actions": {
       "generateTitleVoices": "Generate the voice of every title without audio (cover, menus, options, stages)",
@@ -93,12 +125,6 @@
       "verify": "Verify diagram"
     },
     "diagram": {
-      "titleGenerator": {
-        "audio": "Generate the voice from the title",
-        "image": "Generate an image showing the title",
-        "askAudio": "Text to speak:",
-        "askImage": "Text to write on the image:"
-      },
       "editText": "Click to edit",
       "stage": {
         "controls": {
@@ -288,6 +314,7 @@
 
   "dialogs": {
     "shared": {
+      "cancel": "Cancel",
       "yes": "Yes",
       "no": "No",
       "ok": "OK"

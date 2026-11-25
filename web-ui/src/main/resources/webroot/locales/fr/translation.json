@@ -53,10 +53,42 @@
 
   "editor": {
     "titleVoice": {
-      "choose": "Voix utilisée pour générer les titres",
-      "auto": "Voix en ligne (Denise), sinon voix de l'ordinateur",
-      "system": "Voix de l'ordinateur (hors ligne)",
-      "unavailable": "— indisponible"
+      "choose": "Voix des titres",
+      "voices": {
+        "denise": "Denise (femme)",
+        "henri": "Henri (homme)",
+        "eloise": "Éloïse (voix d'enfant)",
+        "vivienne": "Vivienne (femme)",
+        "remy": "Rémy (homme)"
+      },
+      "online": "Voix en ligne",
+      "offline": "Hors ligne",
+      "auto": "Voix par défaut",
+      "system": "Voix de l'ordinateur",
+      "systemShort": "Ordinateur",
+      "unavailable": "(indisponible)",
+      "onlineHelp": "Voix naturelle, comme dans Lunii Pack : le texte est envoyé au service en ligne de Microsoft. Sans connexion, la voix de l'ordinateur prend le relais.",
+      "offlineHelp": "Voix de Windows : rien ne sort de l'ordinateur, mais elle est moins naturelle.",
+      "onlineMissing": "La voix en ligne n'est pas installée (Python et edge-tts) : la voix de l'ordinateur sera utilisée.",
+      "pronunciation": "Prononciation (écrit = lu)",
+      "pronunciationPlaceholder": "ex. Dalton = Daltonne ; Luke = Louc",
+      "listenPrompt": "Phrase à écouter",
+      "settingsTitle": "Voix des titres",
+      "available": "disponible",
+      "notInstalled": "non installée",
+      "generatedOnline": "Voix en ligne : {{voice}}",
+      "generatedOffline": "Voix de l'ordinateur"
+    },
+    "titleGenerator": {
+      "audio": "Générer la voix à partir du titre",
+      "image": "Générer une image avec le titre",
+      "audioTitle": "Générer la voix du titre",
+      "imageTitle": "Générer l'image du titre",
+      "askAudio": "Texte à prononcer",
+      "askImage": "Texte à écrire sur l'image",
+      "listen": "Écouter",
+      "attach": "Attacher au nœud",
+      "emptyText": "Saisissez un texte"
     },
     "actions": {
       "generateTitleVoices": "Générer la voix de tous les titres sans audio (couverture, menus, options, scènes)",
@@ -93,12 +125,6 @@
       "verify": "Verifier le diagramme"
     },
     "diagram": {
-      "titleGenerator": {
-        "audio": "Générer la voix à partir du titre",
-        "image": "Générer une image avec le titre",
-        "askAudio": "Texte à prononcer :",
-        "askImage": "Texte à écrire sur l'image :"
-      },
       "editText": "Cliquez pour modifier",
       "stage": {
         "controls": {
@@ -288,6 +314,7 @@
 
   "dialogs": {
     "shared": {
+      "cancel": "Annuler",
       "yes": "Oui",
       "no": "Non",
       "ok": "OK"

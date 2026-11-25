@@ -4,6 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+/* Button next to an asset, in a node */
 .storm-diagrams-canvas .node .title-generator {
     display: inline-block;
     margin-top: 3px;
@@ -22,12 +23,7 @@
     background: #ffffff;
 }
 
-.storm-diagrams-canvas .node .title-generator.busy {
-    cursor: wait;
-    opacity: 0.6;
-}
-
-.storm-diagrams-canvas .node .title-generator.busy .glyphicon {
+.title-spin {
     animation: title-generator-spin 1s linear infinite;
 }
 
@@ -36,11 +32,63 @@
     to { transform: rotate(360deg); }
 }
 
-/* Editor toolbar: voice used for generated titles */
-.custom-pack-editor .controls .title-voice-select {
-    max-width: 210px;
-    height: 34px;
-    margin: 0 4px;
-    vertical-align: middle;
+/* Editor toolbar */
+.custom-pack-editor .controls .title-voice-button {
+    font-size: 13px;
+    vertical-align: top;
+}
+
+/* Dialogs */
+.title-dialog {
+    z-index: 2000;
+}
+
+.title-dialog .modal-dialog {
+    max-width: 480px;
+}
+
+.title-dialog textarea {
+    resize: vertical;
+    font-size: 16px;
+}
+
+.title-dialog .title-dialog-count {
+    text-align: right;
+    margin: 2px 0 0;
+    font-size: 11px;
+}
+
+.title-dialog .title-dialog-result audio {
+    width: 100%;
+}
+
+.title-dialog .title-dialog-result .help-block {
+    margin-top: 2px;
+}
+
+.title-dialog .title-dialog-image {
+    display: flex;
+    justify-content: center;
+}
+
+.title-dialog .title-dialog-image img,
+.title-dialog .title-dialog-empty {
+    width: 320px;
+    height: 240px;
+    max-width: 100%;
+    border-radius: 4px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+}
+
+.title-dialog .title-dialog-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eeeeee;
+    color: #777777;
+}
+
+.title-dialog .title-dialog-engines {
+    margin-bottom: 0;
     font-size: 12px;
 }

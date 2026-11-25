@@ -27,22 +27,27 @@ class TitleVoiceRealSynthesisTest {
 
     private static final String TEXT = "Le petit chaperon rouge et le grand m\u00e9chant loup";
 
+    /** Every voice offered in the editor, the ones Lunii Pack offers. */
     @Test
     void edge() throws Exception {
-        TitleVoiceService.Speech speech = new TitleVoiceService().speak(TEXT, "edge", null);
-        check(speech, "edge");
+        TitleVoiceService service = new TitleVoiceService();
+        for (String voice : TitleVoiceService.SUGGESTED_VOICES) {
+            TitleVoiceService.Speech speech = service.speak(TEXT, "edge", voice);
+            assertEquals(voice, speech.voice);
+            check(speech, "edge", voice);
+        }
     }
 
     @Test
     void system() throws Exception {
         TitleVoiceService.Speech speech = new TitleVoiceService().speak(TEXT, "system", null);
-        check(speech, "system");
+        check(speech, "system", "system");
     }
 
-    private static void check(TitleVoiceService.Speech speech, String engine) throws Exception {
+    private static void check(TitleVoiceService.Speech speech, String engine, String name) throws Exception {
         assertEquals(engine, speech.engine);
         long ms = TitleVoiceService.durationMillis(speech.wave);
-        Path out = Paths.get("target", "tts-check", engine + ".wav");
+        Path out = Paths.get("target", "tts-check", name + ".wav");
         Files.createDirectories(out.getParent());
         Files.write(out, speech.wave);
         System.out.println(engine + ": " + out.toAbsolutePath() + " " + speech.wave.length + " bytes, " + ms + " ms");

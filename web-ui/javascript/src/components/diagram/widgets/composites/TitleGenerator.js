@@ -6,62 +6,43 @@
 
 import React from 'react';
 import {useTranslation} from 'react-i18next';
-import {toast} from 'react-toastify';
 
-import {askTitleText, renderTitleImage, speakTitle} from "../../../../utils/titleAssets";
+import {TitleAssetDialog} from "../../TitleDialogs";
 import './TitleGenerator.css';
 
 /**
  * A small button next to an asset: "generate the voice" (kind="audio") or "generate the image"
- * (kind="image") from the node title. The text is asked first, prefilled with the title.
- * onGenerated(dataUrl) receives the asset, in a format the editor already accepts.
+ * (kind="image") from the node title. It opens a dialog where the text can be changed and the
+ * result heard or seen before it is attached. onGenerated(dataUrl) receives the asset, in a format
+ * the editor already accepts. engine is the diagram engine, locked while the dialog is open.
  */
-const TitleGenerator = ({kind, text, onGenerated}) => {
+const TitleGenerator = ({kind, text, onGenerated, engine}) => {
     const {t} = useTranslation();
-    const [busy, setBusy] = React.useState(false);
+    const [open, setOpen] = React.useState(false);
     const audio = kind === 'audio';
 
     const stop = (e) => {
         // Neither select nor drag the node, nor open the file selector of the asset
         e.stopPropagation();
     };
-
-    const onClick = async (e) => {
+    const onClick = (e) => {
         e.stopPropagation();
         e.preventDefault();
-        if (busy) {
-            return;
-        }
-        const spoken = askTitleText(t(audio ? 'editor.diagram.titleGenerator.askAudio' : 'editor.diagram.titleGenerator.askImage'), text);
-        if (!spoken) {
-            return;
-        }
-        if (!audio) {
-            onGenerated(renderTitleImage(spoken));
-            return;
-        }
-        setBusy(true);
-        try {
-            const speech = await speakTitle(spoken);
-            onGenerated(speech.dataUrl);
-            if (speech.fallbackReason) {
-                toast.warning(t('toasts.editor.titleVoiceFallback', {reason: speech.fallbackReason}));
-            }
-        } catch (err) {
-            console.error('failed to generate the title voice', err);
-            toast.error(t('toasts.editor.titleVoiceFailed', {message: err.message}));
-        } finally {
-            setBusy(false);
-        }
+        setOpen(true);
     };
+    const close = React.useCallback(() => setOpen(false), []);
 
-    return <span className={`title-generator ${busy ? 'busy' : ''}`}
-                 title={t(audio ? 'editor.diagram.titleGenerator.audio' : 'editor.diagram.titleGenerator.image')}
-                 onMouseDown={stop}
-                 onDoubleClick={stop}
-                 onClick={onClick}>
-        <span className={`glyphicon ${busy ? 'glyphicon-refresh' : audio ? 'glyphicon-bullhorn' : 'glyphicon-text-background'}`}/>
-    </span>;
+    return <>
+        <span className="title-generator"
+              title={t(audio ? 'editor.titleGenerator.audio' : 'editor.titleGenerator.image')}
+              onMouseDown={stop}
+              onDoubleClick={stop}
+              onClick={onClick}>
+            <span className={`glyphicon ${audio ? 'glyphicon-bullhorn' : 'glyphicon-text-background'}`}/>
+        </span>
+        {open && <TitleAssetDialog kind={kind} title={text} onGenerated={onGenerated} onClose={close}
+                                   model={engine ? engine.getModel() : null}/>}
+    </>;
 };
 
 export default TitleGenerator;
