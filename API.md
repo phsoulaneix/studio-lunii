@@ -236,7 +236,8 @@ Microsoft).
 The pack is the one Lunii Pack writes: a cover (mosaic of up to four thumbnails with the title), an
 optional main menu of sub-menus, and for each video a title stage (thumbnail cropped to 320×240,
 spoken title) then the story (mono MP3, 44.1 kHz, loudness normalised, autoplay). Node uuids derive
-from the title and the video ids, so making the same pack again gives the same uuids. It is added to
+from the links asked for and the video ids, so making the same pack again gives the same uuids
+(an update on the device), and two packs of the same title stay two packs. It is added to
 the library under `<title>.zip`, or `<title> (2).zip`… when that name is taken: an existing pack is
 never replaced. When YouTube asks to prove one is not a robot, downloads stop and the pack is made
 with the videos already downloaded (`result.blocked`).

@@ -58,6 +58,7 @@ class YoutubePackServiceTest {
     private boolean ytDlpInstalled = true;
     private boolean ffmpegInstalled = true;
     private boolean voiceWorks = true;
+    private int[] voiceCalls = {0};
     private YoutubePackService.Sleeper sleeper = (ms, cancelled) -> { };
 
     @BeforeEach
@@ -118,6 +119,7 @@ class YoutubePackServiceTest {
         YoutubePackService s = new YoutubePackService(this::fakeRun, List.of("python"),
                 id -> segments.getOrDefault(id, List.of()),
                 (text, engine, voice) -> {
+                    voiceCalls[0]++;
                     if (!voiceWorks) {
                         throw new TitleVoiceException(TitleVoiceException.Code.TTS_UNAVAILABLE, "aucune voix");
                     }
@@ -344,6 +346,67 @@ class YoutubePackServiceTest {
         assertEquals("Seule", state.getJsonObject("result").getString("title"));
         assertEquals(2, state.getJsonObject("result").getInteger("silentTitles"));
         assertNotNull(new ArchiveStoryPackReader().readMetadata(libraryDir.resolve("Seule.zip")));
+    }
+
+    @Test
+    void channelTabsAreNotVideos() throws Exception {
+        String channel = "https://www.youtube.com/@Blender";
+        metadata.put(channel, new JsonObject().put("_type", "playlist").put("title", "Blender").put("entries", new JsonArray()
+                .add(new JsonObject().put("_type", "url").put("ie_key", "YoutubeTab").put("id", "UCSMOQeBJ2RAnuFungnQOxLg").put("title", "Blender - Videos"))));
+        YoutubePackJob job = await(service().start(request(new JsonObject().put("urls", channel))));
+        assertEquals("NOTHING_DOWNLOADED", job.toJson().getString("error"));
+        assertTrue(job.toJson().getJsonArray("log").encode().contains("cha\u00eene"));
+        assertFalse(commands.stream().anyMatch(c -> c.contains("--write-thumbnail")));
+        assertTrue(YoutubePackService.isVideoEntry(entry("aaaaaaaaaa1", "x", 1)));
+    }
+
+    @Test
+    void audioKeptWhenOnlyPostProcessingFails() throws Exception {
+        metadata.put("https://www.youtube.com/watch?v=ggggggggggg", entry("ggggggggggg", "Miniature cass\u00e9e", 100));
+        YoutubePackService.CommandRunner real = this::fakeRun;
+        YoutubePackService s = new YoutubePackService((cmd, sink, timeout, cancelled) -> {
+            int code = real.run(cmd, sink, timeout, cancelled);
+            if (cmd.contains("--write-thumbnail")) {
+                sink.line("ERROR: Postprocessing: thumbnail conversion failed", true);
+                return 1;
+            }
+            return code;
+        }, List.of("python"), id -> List.of(), (t, e, v) -> null, new YoutubePackService.Library() {
+            @Override
+            public Path directory() {
+                return libraryDir;
+            }
+
+            @Override
+            public boolean add(String name, Path file) {
+                return file.toFile().renameTo(libraryDir.resolve(name).toFile());
+            }
+        }, tmp.resolve("work"), (ms, c) -> { }, List.of());
+        YoutubePackJob job = await(s.start(request(new JsonObject().put("urls", "ggggggggggg"))));
+        assertEquals("DONE", job.toJson().getString("state"), job.toJson().encodePrettily());
+        assertEquals(1, job.toJson().getJsonObject("result").getInteger("stories"));
+    }
+
+    @Test
+    void packIdentifierComesFromTheLinks() {
+        YoutubePackRequest a = request(new JsonObject().put("urls", "aaaaaaaaaa1\nbbbbbbbbbb1").put("title", "Mes histoires"));
+        YoutubePackRequest b = request(new JsonObject().put("urls", "bbbbbbbbbb1\naaaaaaaaaa1"));
+        YoutubePackRequest c = request(new JsonObject().put("urls", "ccccccccccc").put("title", "Mes histoires"));
+        assertEquals(YoutubePackService.packId(a), YoutubePackService.packId(b));
+        assertFalse(YoutubePackService.packId(a).equals(YoutubePackService.packId(c)));
+    }
+
+    @Test
+    void aFailingVoiceIsNotAskedForEveryTitle() throws Exception {
+        voiceWorks = false;
+        playlist(PLAYLIST, "Muette", entry("hhhhhhhhhh1", "Un", 100), entry("hhhhhhhhhh2", "Deux", 100),
+                entry("hhhhhhhhhh3", "Trois", 100), entry("hhhhhhhhhh4", "Quatre", 100), entry("hhhhhhhhhh5", "Cinq", 100));
+        int[] calls = {0};
+        voiceCalls = calls;
+        YoutubePackJob job = await(service().start(request(new JsonObject().put("urls", PLAYLIST).put("pauses", false))));
+        assertEquals("DONE", job.toJson().getString("state"));
+        assertEquals(YoutubePackService.MAX_VOICE_FAILURES, calls[0]);
+        assertEquals(6, job.toJson().getJsonObject("result").getInteger("silentTitles"));
     }
 
     @Test

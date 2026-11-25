@@ -54,18 +54,20 @@ public class YoutubeController {
             json(ctx, 202, job.toJson());
         }), false);
 
-        // The running creation, or the last one: the dialog finds it again after being closed
-        router.get("/jobs/current").handler(ctx -> handle(ctx, () -> json(ctx, 200,
+        // The running creation, or the last one: the dialog finds it again after being closed.
+        // Blocking handlers: the service lock may be held while the tools are probed (processes),
+        // which must never stall the event loop.
+        router.get("/jobs/current").blockingHandler(ctx -> handle(ctx, () -> json(ctx, 200,
                 service.current().orElseThrow(() -> new YoutubePackException(YoutubePackException.Code.NOT_FOUND,
-                        "Aucune cr\u00e9ation en cours")).toJson())));
+                        "Aucune cr\u00e9ation en cours")).toJson())), false);
 
-        router.get("/jobs/:id").handler(ctx -> handle(ctx, () -> {
+        router.get("/jobs/:id").blockingHandler(ctx -> handle(ctx, () -> {
             String id = ctx.pathParam("id");
             json(ctx, 200, service.job(id).orElseThrow(() -> new YoutubePackException(YoutubePackException.Code.NOT_FOUND,
                     "Cr\u00e9ation inconnue : " + id)).toJson());
-        }));
+        }), false);
 
-        router.post("/jobs/:id/cancel").handler(ctx -> handle(ctx, () -> json(ctx, 200, service.cancel(ctx.pathParam("id")).toJson())));
+        router.post("/jobs/:id/cancel").blockingHandler(ctx -> handle(ctx, () -> json(ctx, 200, service.cancel(ctx.pathParam("id")).toJson())), false);
 
         return router;
     }

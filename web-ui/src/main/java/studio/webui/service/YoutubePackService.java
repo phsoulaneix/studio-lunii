@@ -30,6 +30,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -78,6 +79,8 @@ public class YoutubePackService {
     private static final Set<String> NOT_AUDIO = Set.of("jpg", "jpeg", "png", "webp", "part", "ytdl", "json", "tmp", "temp");
     private static final int MAX_SPOKEN = TitleVoiceService.MAX_TEXT_LENGTH;
     private static final int KEPT_JOBS = 10;
+    /** Consecutive voice failures after which the remaining titles are left silent. */
+    static final int MAX_VOICE_FAILURES = 3;
 
     // -- seams, replaced in tests
 
@@ -390,6 +393,8 @@ public class YoutubePackService {
 
     void execute(YoutubePackJob job, YoutubePackRequest req, Tools t) {
         Path work = null;
+        JsonObject result = null;
+        YoutubePackException failure = null;
         try {
             work = Files.createDirectories(tmpRoot).resolve(job.getId());
             Files.createDirectories(work);
@@ -415,10 +420,19 @@ public class YoutubePackService {
                     String group = Optional.ofNullable(info.getString("title")).orElse("Playlist");
                     playlistTitle = group;
                     List<Video> block = new ArrayList<>();
+                    int others = 0;
                     for (Object o : entries) {
-                        if (o instanceof JsonObject && ((JsonObject) o).getString("id") != null) {
+                        if (o instanceof JsonObject && isVideoEntry((JsonObject) o)) {
                             block.add(video((JsonObject) o, group));
+                        } else {
+                            others++;
                         }
+                    }
+                    if (block.isEmpty() && others > 0) {
+                        // A channel page lists its tabs (Videos, Shorts\u2026), not videos
+                        job.warn("lien non pris en charge (cha\u00eene ou onglet) : " + url
+                                + ". Collez le lien d'une playlist ou de vid\u00e9os.");
+                        continue;
                     }
                     job.log("  playlist \u00ab " + group + " \u00bb : " + block.size() + " vid\u00e9o(s)");
                     blocks.add(block);
@@ -548,26 +562,35 @@ public class YoutubePackService {
             int expectedVoices = stories.size() + 1 + (int) converted.stream().map(v -> v.group).distinct().count();
             Map<String, byte[]> spoken = new HashMap<>();
             int[] done = {0};
-            String[] voiceProblem = {null};
+            int[] voiceFailures = {0};
             YoutubePackBuilder.Settings settings = new YoutubePackBuilder.Settings(packTitle, req.description,
-                    YoutubeTitles.slug(packTitle), req.menuSize, req.autoplayNext);
+                    packId(req), req.menuSize, req.autoplayNext);
             Path packFile = work.resolve("pack.zip");
             YoutubePackBuilder.Result built = YoutubePackBuilder.build(stories, settings, text -> {
                 checkCancel(job);
                 done[0]++;
                 job.item(Math.min(done[0], expectedVoices), expectedVoices, text);
                 job.progress(0.85 + 0.12 * Math.min(1.0, (double) done[0] / expectedVoices));
-                return spoken.computeIfAbsent(text, s -> {
-                    try {
-                        return speaker.speak(s.length() > MAX_SPOKEN ? s.substring(0, MAX_SPOKEN) : s, req.engine, req.voice);
-                    } catch (TitleVoiceException e) {
-                        if (voiceProblem[0] == null) {
-                            voiceProblem[0] = e.getMessage();
-                            job.warn("voix indisponible (" + e.getMessage() + ") : titre sans voix");
-                        }
-                        return null;
-                    }
-                });
+                if (spoken.containsKey(text)) {
+                    return spoken.get(text);
+                }
+                // A voice that keeps failing is not asked again for every title
+                if (voiceFailures[0] >= MAX_VOICE_FAILURES) {
+                    return null;
+                }
+                byte[] wave;
+                try {
+                    wave = speaker.speak(text.length() > MAX_SPOKEN ? text.substring(0, MAX_SPOKEN) : text, req.engine, req.voice);
+                    voiceFailures[0] = 0;
+                } catch (TitleVoiceException e) {
+                    voiceFailures[0]++;
+                    job.warn("voix indisponible (" + e.getMessage() + ") : titre sans voix"
+                            + (voiceFailures[0] >= MAX_VOICE_FAILURES ? " ; les titres suivants restent sans voix" : ""));
+                    wave = null;
+                }
+                checkCancel(job);
+                spoken.put(text, wave);
+                return wave;
             }, packFile);
             if (built.silentTitles > 0) {
                 job.warn(built.silentTitles + " titre(s) sans voix : silencieux sur la Lunii. Vous pouvez les g\u00e9n\u00e9rer dans l'\u00e9diteur.");
@@ -580,27 +603,48 @@ public class YoutubePackService {
                 throw new YoutubePackException(YoutubePackException.Code.FAILED, "le pack n'a pas pu \u00eatre ajout\u00e9 \u00e0 la biblioth\u00e8que");
             }
             job.log("Pack ajout\u00e9 \u00e0 la biblioth\u00e8que : " + name + " (" + built.stories + " histoire(s))");
-            job.done(new JsonObject()
+            result = new JsonObject()
                     .put("path", name)
                     .put("uuid", built.uuid)
                     .put("title", packTitle)
                     .put("stories", built.stories)
                     .put("skipped", videos.size() - built.stories)
                     .put("silentTitles", built.silentTitles)
-                    .put("blocked", blocked));
+                    .put("blocked", blocked);
         } catch (YoutubePackException e) {
-            job.fail(e);
+            failure = e;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            job.fail(new YoutubePackException(YoutubePackException.Code.CANCELLED, "cr\u00e9ation interrompue"));
-        } catch (Exception e) {
+            failure = new YoutubePackException(YoutubePackException.Code.CANCELLED, "cr\u00e9ation interrompue");
+        } catch (Exception | Error e) {
+            // Errors too (out of memory, AWT without fonts\u2026): a job left RUNNING would refuse every later one
             LOGGER.error("Pack creation from YouTube failed", e);
-            job.fail(new YoutubePackException(YoutubePackException.Code.FAILED, String.valueOf(e.getMessage()), e));
+            failure = new YoutubePackException(YoutubePackException.Code.FAILED,
+                    e.getMessage() != null ? e.getMessage() : e.toString(), e);
         } finally {
             if (work != null) {
                 deleteQuietly(work);
             }
+            // Finished only once the temporary files are gone
+            if (result != null) {
+                job.done(result);
+            } else {
+                job.fail(failure != null ? failure
+                        : new YoutubePackException(YoutubePackException.Code.FAILED, "cr\u00e9ation interrompue"));
+            }
         }
+    }
+
+    private static final Pattern VIDEO_ID = Pattern.compile("[A-Za-z0-9_-]{11}");
+
+    /** A playlist entry that is a video, not a channel tab or a nested playlist. */
+    static boolean isVideoEntry(JsonObject entry) {
+        String id = entry.getString("id");
+        String type = entry.getString("_type");
+        String ie = entry.getString("ie_key");
+        return id != null && VIDEO_ID.matcher(id).matches()
+                && (type == null || "url".equals(type) || "video".equals(type))
+                && (ie == null || "Youtube".equalsIgnoreCase(ie));
     }
 
     private static Video video(JsonObject info, String group) {
@@ -638,6 +682,16 @@ public class YoutubePackService {
                 }
             }
         }
+    }
+
+    /**
+     * The pack identifier, from which node uuids derive: the links asked for, so that two packs of
+     * the same title stay two packs, and making the same pack again updates it on the device.
+     */
+    static String packId(YoutubePackRequest req) {
+        List<String> urls = new ArrayList<>(req.urls);
+        Collections.sort(urls);
+        return "yt-" + YoutubePackBuilder.sha1(String.join("\n", urls).getBytes(StandardCharsets.UTF_8)).substring(0, 16);
     }
 
     /** A file name in the library that no pack has yet. */
@@ -758,9 +812,15 @@ public class YoutubePackService {
                     .max(Comparator.comparingLong(p -> p.toFile().length()))
                     .orElse(null);
         }
-        if (code != 0 || audio == null) {
+        if (audio == null) {
             String why = lastError(errors, code);
             throw new IOException(why.isEmpty() ? "aucun fichier audio" : why.substring(2, why.length() - 1));
+        }
+        if (code != 0) {
+            // The audio is complete (partial downloads stay ".part"): only a post-processing step,
+            // usually the thumbnail conversion, failed
+            job.log("  ! yt-dlp a signal\u00e9 une erreur apr\u00e8s le t\u00e9l\u00e9chargement" + lastError(errors, code)
+                    + " : l'audio est gard\u00e9");
         }
         v.audio = audio;
         Path thumb = dir.resolve("media.jpg");

@@ -96,6 +96,11 @@ class YoutubeTitlesTest {
     void fileNamesAndSlugs() {
         assertEquals("Contes - soir- 1", YoutubeTitles.fileName("Contes / soir: 1"));
         assertEquals("pack", YoutubeTitles.fileName(" .. "));
+        // Windows reserved names, whatever the case or the extension
+        assertEquals("Nul_", YoutubeTitles.fileName("Nul"));
+        assertEquals("con_", YoutubeTitles.fileName("con"));
+        assertEquals("COM1_.ok", YoutubeTitles.fileName("COM1.ok"));
+        assertEquals("Nulle part", YoutubeTitles.fileName("Nulle part"));
         assertEquals("les-histoires-d-ete", YoutubeTitles.slug("Les histoires d'\u00e9t\u00e9 !"));
         assertEquals("pack", YoutubeTitles.slug("\u2728"));
     }

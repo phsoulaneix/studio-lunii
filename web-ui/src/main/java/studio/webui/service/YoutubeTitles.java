@@ -342,14 +342,22 @@ public final class YoutubeTitles {
         return res;
     }
 
-    /** A file name for the pack, without characters Windows refuses. */
+    private static final Pattern RESERVED = Pattern.compile("(?i)(con|prn|aux|nul|com[0-9]|lpt[0-9])");
+
+    /** A file name for the pack, without characters or names Windows refuses ("Nul", "Con"\u2026). */
     public static String fileName(String title) {
         String n = title == null ? "" : title.replaceAll("[<>:\"/\\\\|?*\\x00-\\x1f]", "-");
         n = strip(n.trim(), " .");
         if (n.length() > 80) {
             n = strip(n.substring(0, 80), " .");
         }
-        return n.isEmpty() ? "pack" : n;
+        if (n.isEmpty()) {
+            return "pack";
+        }
+        // Reserved whatever the extension: "nul.zip" is the null device too
+        int dot = n.contains(".") ? n.indexOf('.') : n.length();
+        String base = n.substring(0, dot).trim();
+        return RESERVED.matcher(base).matches() ? base + "_" + n.substring(dot) : n;
     }
 
     /** An ASCII slug of the title, for stable node identifiers. */

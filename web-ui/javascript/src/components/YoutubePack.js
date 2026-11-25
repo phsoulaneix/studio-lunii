@@ -33,6 +33,8 @@ class YoutubePack extends React.Component {
             toolsError: null,
             checking: false,
             form: defaultForm(null),
+            // The fields the user has changed: a new check of the tools keeps them
+            touched: {},
             starting: false,
             startError: null,
             job: null
@@ -115,8 +117,8 @@ class YoutubePack extends React.Component {
                 this.setState(state => ({
                     tools,
                     checking: false,
-                    // Defaults from the backend, unless the user has started filling in the form
-                    form: state.form.links ? state.form : {...defaultForm(tools), links: state.form.links}
+                    // Defaults from the backend for the fields the user has not changed
+                    form: {...defaultForm(tools), ...state.touched}
                 }));
             })
             .catch(e => {
@@ -141,7 +143,7 @@ class YoutubePack extends React.Component {
     onField = (name, kind) => {
         return (event) => {
             const value = kind === 'checkbox' ? event.target.checked : event.target.value;
-            this.setState(state => ({form: {...state.form, [name]: value}, startError: null}));
+            this.setState(state => ({form: {...state.form, [name]: value}, touched: {...state.touched, [name]: value}, startError: null}));
         };
     };
 
@@ -178,7 +180,8 @@ class YoutubePack extends React.Component {
     };
 
     onAnother = () => {
-        this.setState(state => ({job: null, form: {...state.form, links: '', title: '', description: ''}}));
+        const cleared = {links: '', title: '', description: ''};
+        this.setState(state => ({job: null, form: {...state.form, ...cleared}, touched: {...state.touched, ...cleared}}));
     };
 
     renderTools() {
