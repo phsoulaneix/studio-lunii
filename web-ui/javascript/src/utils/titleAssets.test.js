@@ -5,7 +5,9 @@
  */
 
 import {
+    applyPronunciations,
     collectMissingTitleAudio,
+    parsePronunciations,
     generateMissingTitleAudio,
     layoutTitle,
     speakTitle,
@@ -189,5 +191,35 @@ describe('generateMissingTitleAudio', () => {
             .rejects.toMatchObject({code: 'PACK_CHANGED', generated: 0});
         expect(first.audio).toBeFalsy();
         expect(second.audio).toBeFalsy();
+    });
+});
+
+describe('pronunciations (as in Lunii Pack)', () => {
+    it('reads "written = spoken" pairs, longest first', () => {
+        expect(parsePronunciations('Luke = Louc ; Lucky Luke=Lucky Louc\nDalton=Daltonne; sans egal ; =vide'))
+            .toEqual([['Lucky Luke', 'Lucky Louc'], ['Dalton', 'Daltonne'], ['Luke', 'Louc']]);
+        expect(parsePronunciations('')).toEqual([]);
+        expect(parsePronunciations(null)).toEqual([]);
+    });
+
+    it('replaces whole words, ignoring case, and keeps the plural', () => {
+        const pairs = parsePronunciations('Dalton = Daltonne ; Luke = Louc ; Lucky Luke = Lucky Louc');
+        expect(applyPronunciations('Lucky Luke contre les Daltons', pairs)).toBe('Lucky Louc contre les Daltonnes');
+        expect(applyPronunciations('luke et DALTON', pairs)).toBe('Louc et Daltonne');
+        // not inside another word, accents included
+        expect(applyPronunciations('Lukeé Daltonien éDalton', pairs)).toBe('Lukeé Daltonien éDalton');
+        expect(applyPronunciations('(Luke) - Dalton.', pairs)).toBe('(Louc) - Daltonne.');
+    });
+
+    it('treats the written form literally, not as a pattern', () => {
+        expect(applyPronunciations('Mr. X et MrsX', parsePronunciations('Mr. = Monsieur'))).toBe('Monsieur X et MrsX');
+    });
+
+    it('are applied to the text sent for speech', async () => {
+        global.fetch = jest.fn(() => Promise.resolve({ok: true, json: () => Promise.resolve({data: 'AA=='})}));
+        await speakTitle('Les Daltons', 'fr-FR-HenriNeural', 'Dalton=Daltonne');
+        expect(JSON.parse(global.fetch.mock.calls[0][1].body))
+            .toEqual({text: 'Les Daltonnes', engine: 'auto', voice: 'fr-FR-HenriNeural'});
+        delete global.fetch;
     });
 });

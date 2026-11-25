@@ -157,7 +157,11 @@ above (`Host`/`Origin` checked, `POST` in JSON only, body ≤ 1 MiB).
     installed. Nothing leaves the computer.
   - `auto`: `edge` when available, the system voice if `edge` is missing or fails (the answer then
     carries `fallbackReason`).
-- `voice`: an edge voice name (`xx-XX-NameNeural`); ignored by the system voice.
+- `voice`: an edge voice name (`xx-XX-NameNeural`); ignored by the system voice. The editor offers
+  the voices of Lunii Pack: `fr-FR-DeniseNeural` (default), `fr-FR-HenriNeural`,
+  `fr-FR-EloiseNeural` (child voice), `fr-FR-VivienneMultilingualNeural`,
+  `fr-FR-RemyMultilingualNeural`. Pronunciations (`Dalton = Daltonne`) are applied by the editor
+  before the text is sent.
 - Defaults can be set at start-up: `-Dstudio.tts.engine=system` (never go online),
   `-Dstudio.tts.voice=fr-FR-HenriNeural`, `-Dstudio.tts.timeoutSeconds=60`.
 

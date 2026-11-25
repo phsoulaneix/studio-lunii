@@ -73,13 +73,10 @@ public class TitleVoiceService {
     public static final String VOICE_PROP = "studio.tts.voice";
     public static final String TIMEOUT_PROP = "studio.tts.timeoutSeconds";
 
-    /** French neural voices offered in the editor. Any other well-formed edge voice name is accepted. */
+    /** The voices Lunii Pack offers, in the same order. Any other well-formed edge voice name is accepted. */
     public static final List<String> SUGGESTED_VOICES = List.of(
             "fr-FR-DeniseNeural", "fr-FR-HenriNeural", "fr-FR-EloiseNeural",
-            "fr-FR-VivienneMultilingualNeural", "fr-FR-RemyMultilingualNeural",
-            "fr-BE-CharlineNeural", "fr-BE-GerardNeural",
-            "fr-CA-SylvieNeural", "fr-CA-AntoineNeural",
-            "fr-CH-ArianeNeural", "fr-CH-FabriceNeural");
+            "fr-FR-VivienneMultilingualNeural", "fr-FR-RemyMultilingualNeural");
 
     private static final Pattern VOICE_NAME = Pattern.compile("[a-z]{2,3}-[A-Z]{2}-[A-Za-z]{2,40}Neural");
 

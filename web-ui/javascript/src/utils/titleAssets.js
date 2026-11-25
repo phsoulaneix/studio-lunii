@@ -21,14 +21,17 @@ export const TITLE_MAX_LENGTH = 500;
 // -- voice
 
 /**
- * The voice setting, stored in this browser: 'auto' (online voice, computer voice as fallback),
- * 'system' (computer voice only, nothing leaves the computer) or an online voice name.
+ * The voice setting, stored in this browser: an online voice name (the computer voice answers if
+ * it is unavailable), 'system' (computer voice only, nothing leaves the computer), or 'auto' (the
+ * server's default voice). Denise by default, as in Lunii Pack.
  */
+export const DEFAULT_TITLE_VOICE = 'fr-FR-DeniseNeural';
+
 export function getTitleVoice() {
     try {
-        return window.localStorage.getItem(LOCAL_STORAGE_TITLE_VOICE) || 'auto';
+        return window.localStorage.getItem(LOCAL_STORAGE_TITLE_VOICE) || DEFAULT_TITLE_VOICE;
     } catch (e) {
-        return 'auto';
+        return DEFAULT_TITLE_VOICE;
     }
 }
 
@@ -56,15 +59,80 @@ export async function fetchVoiceEngines() {
     return fetch('/api/tts/engines').then(handleJsonOrError);
 }
 
+/** The online voices Lunii Pack offers, in the same order; key names the label in translations. */
+export const TITLE_VOICES = [
+    {value: 'fr-FR-DeniseNeural', key: 'denise'},
+    {value: 'fr-FR-HenriNeural', key: 'henri'},
+    {value: 'fr-FR-EloiseNeural', key: 'eloise'},
+    {value: 'fr-FR-VivienneMultilingualNeural', key: 'vivienne'},
+    {value: 'fr-FR-RemyMultilingualNeural', key: 'remy'}
+];
+
+/** Sentence spoken by the "listen" button, as in Lunii Pack. */
+export const VOICE_SAMPLE_TEXT = 'Bonjour, ceci est un essai.';
+
+// -- pronunciations, as in Lunii Pack: "Dalton = Daltonne ; Luke = Louc" (written = spoken)
+
+export const LOCAL_STORAGE_TITLE_PRONUNCIATION = 'titlePronunciation';
+
+export function getTitlePronunciation() {
+    try {
+        return window.localStorage.getItem(LOCAL_STORAGE_TITLE_PRONUNCIATION) || '';
+    } catch (e) {
+        return '';
+    }
+}
+
+export function setTitlePronunciation(value) {
+    try {
+        window.localStorage.setItem(LOCAL_STORAGE_TITLE_PRONUNCIATION, value || '');
+    } catch (e) {
+        // Not persisted
+    }
+}
+
+/** "Dalton=Daltonne; Lucky Luke = Lucky Louc" → [[written, spoken], …], longest written first. */
+export function parsePronunciations(text) {
+    const pairs = [];
+    String(text || '').split(/[;\n]/).forEach(piece => {
+        const sep = piece.indexOf('=');
+        if (sep > 0) {
+            const written = piece.substring(0, sep).trim();
+            if (written) {
+                pairs.push([written, piece.substring(sep + 1).trim()]);
+            }
+        }
+    });
+    // "Lucky Luke" before "Luke"
+    return pairs.sort((a, b) => b[0].length - a[0].length);
+}
+
+const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /**
- * Speaks the text on the server. Resolves to {dataUrl, engine, voice, fallbackReason}; dataUrl is a
- * device-native WAVE, attached to a node exactly as a dropped file would be.
+ * Replaces whole words, ignoring case; a plural follows ("Dalton=Daltonne" also turns "Daltons"
+ * into "Daltonnes"). Same rule as Lunii Pack.
  */
-export async function speakTitle(text, setting = getTitleVoice()) {
+export function applyPronunciations(text, pairs) {
+    let result = String(text || '');
+    (pairs || []).forEach(([written, spoken]) => {
+        const re = new RegExp(`(^|[^\\p{L}\\p{N}_])${escapeRegExp(written)}(s?)(?![\\p{L}\\p{N}_])`, 'giu');
+        result = result.replace(re, (m, before, plural) => before + spoken + plural);
+    });
+    return result;
+}
+
+/**
+ * Speaks the text on the server, after the pronunciations are applied. Resolves to {dataUrl,
+ * engine, voice, fallbackReason}; dataUrl is a device-native WAVE, attached to a node exactly as a
+ * dropped file would be.
+ */
+export async function speakTitle(text, setting = getTitleVoice(), pronunciation = getTitlePronunciation()) {
+    const spoken = applyPronunciations(text, parsePronunciations(pronunciation)).trim() || text;
     const answer = await fetch('/api/tts/speak', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(voiceRequest(text, setting))
+        body: JSON.stringify(voiceRequest(spoken, setting))
     }).then(handleJsonOrError);
     return {
         dataUrl: 'data:' + (answer.mimeType || 'audio/wav') + ';base64,' + answer.data,
@@ -180,18 +248,6 @@ export function renderTitleImage(text, {background = '#1d2b53', foreground = '#f
     lines.forEach((line, i) => ctx.fillText(line, TITLE_IMAGE_WIDTH / 2, top + i * lineHeight));
 
     return canvas.toDataURL('image/jpeg', 0.95);
-}
-
-// -- shared
-
-/** Asks for the text to use, prefilled with the title. Null when cancelled or empty. */
-export function askTitleText(promptLabel, title) {
-    const answer = window.prompt(promptLabel, title || '');
-    if (answer === null) {
-        return null;
-    }
-    const text = answer.trim();
-    return text.length > 0 ? text.substring(0, TITLE_MAX_LENGTH) : null;
 }
 
 // -- every missing title voice of a pack

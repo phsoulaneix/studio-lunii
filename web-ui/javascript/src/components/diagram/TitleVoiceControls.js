@@ -10,35 +10,28 @@ import {toast} from 'react-toastify';
 
 import {
     collectMissingTitleAudio,
-    fetchVoiceEngines,
     generateMissingTitleAudio,
     getTitleVoice,
-    setTitleVoice
+    TITLE_VOICES
 } from "../../utils/titleAssets";
+import {TitleVoiceSettingsDialog} from "./TitleDialogs";
 import "./widgets/composites/TitleGenerator.css";
 
 /**
- * Editor toolbar: the voice used for generated titles, and "generate every missing title voice".
+ * Editor toolbar: the voice that reads the titles (a button showing it, which opens the settings:
+ * voice, pronunciations, a sentence to listen to) and "generate every missing title voice".
  * getModel() returns the open diagram; onChanged() repaints it.
  */
 const TitleVoiceControls = ({getModel, onChanged}) => {
     const {t} = useTranslation();
     const [voice, setVoice] = React.useState(getTitleVoice());
-    const [engines, setEngines] = React.useState(null);
+    const [settingsOpen, setSettingsOpen] = React.useState(false);
     const [busy, setBusy] = React.useState(false);
 
-    React.useEffect(() => {
-        let alive = true;
-        fetchVoiceEngines()
-            .then(e => alive && setEngines(e))
-            .catch(e => console.warn('title voice engines unknown', e));
-        return () => { alive = false; };
+    const closeSettings = React.useCallback(() => {
+        setSettingsOpen(false);
+        setVoice(getTitleVoice());
     }, []);
-
-    const onVoiceChange = (e) => {
-        setVoice(e.target.value);
-        setTitleVoice(e.target.value);
-    };
 
     const generateAll = async () => {
         if (busy) {
@@ -70,21 +63,20 @@ const TitleVoiceControls = ({getModel, onChanged}) => {
         }
     };
 
-    const voices = (engines && engines.voices) || [];
-    const edgeMissing = engines && !engines.edge;
+    const known = TITLE_VOICES.find(v => v.value === voice);
+    const voiceLabel = voice === 'system' ? t('editor.titleVoice.systemShort')
+        : voice === 'auto' ? t('editor.titleVoice.auto')
+        : known ? t('editor.titleVoice.voices.' + known.key).replace(/ \(.*\)$/, '') : voice;
     return <>
-        <select className="title-voice-select"
-                value={voice}
-                onChange={onVoiceChange}
-                title={t('editor.titleVoice.choose')}>
-            <option value="auto">{t('editor.titleVoice.auto')}{edgeMissing ? ' ' + t('editor.titleVoice.unavailable') : ''}</option>
-            <option value="system">{t('editor.titleVoice.system')}{engines && !engines.system ? ' ' + t('editor.titleVoice.unavailable') : ''}</option>
-            {voices.map(v => <option key={v} value={v}>{v.replace(/Neural$/, '').replace(/Multilingual$/, ' (multilingue)')}</option>)}
-            {voice !== 'auto' && voice !== 'system' && voices.indexOf(voice) === -1 && <option value={voice}>{voice}</option>}
-        </select>
+        <span title={t('editor.titleVoice.settingsTitle')}
+              className="btn btn-default title-voice-button"
+              onClick={() => setSettingsOpen(true)}>
+            <span className="glyphicon glyphicon-volume-up"/> {voiceLabel}
+        </span>
         <span title={t('editor.actions.generateTitleVoices')}
-              className={`btn btn-default glyphicon ${busy ? 'glyphicon-refresh' : 'glyphicon-bullhorn'}`}
+              className={`btn btn-default glyphicon ${busy ? 'glyphicon-refresh title-spin' : 'glyphicon-bullhorn'}`}
               onClick={generateAll}/>
+        {settingsOpen && <TitleVoiceSettingsDialog model={getModel()} onClose={closeSettings}/>}
     </>;
 };
 
